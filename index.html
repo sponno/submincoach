@@ -18,6 +18,21 @@
                    class="border border-gray-300 p-2 rounded-md flex-1"/>
             <button @click="addPlayer" class="bg-purple-500 hover:bg-green-600 text-white py-2 px-4 rounded-md">Add Player</button>
         </div>
+        
+        <div class="mb-4">
+            <label class="block font-semibold mb-2">Number of Periods</label>
+            <select v-model="numberOfPeriods" class="border border-gray-300 p-2 rounded-md w-full">
+                <option v-for="n in [1, 2, 3, 4, 5]" :key="n" :value="n">{{ n }}</option>
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label class="block font-semibold mb-2">Period Duration (Minutes)</label>
+            <select v-model="periodDuration" class="border border-gray-300 p-2 rounded-md w-full">
+                <option v-for="n in Array.from({ length: 45 }, (v, i) => i + 1)" :key="n" :value="n">{{ n }}</option>
+            </select>
+        </div>
+
         <ul class="mb-4">
             <li v-for="player in allPlayers" :key="player.id" class="flex items-center w-full">
                 <div class="flex items-center justify-between bg-gray-100 p-4 rounded-md mb-2 w-full mr-4">
@@ -31,25 +46,19 @@
     </div>
 
     <div v-else>
-        <div class="game-controls mb-6  items-center ">
-            <h2 class="text-2xl font-semibold">Game Time: {{ formatTime(gameTime) }}</h2>
-            <div class="flex items-center gap-x-6">
+        <div class="game-controls mb-6 flex items-center gap-x-6">
+            <h2 class="text-2xl font-semibold">Period {{ currentPeriod }} - Time: {{ formatTime(gameTime) }}</h2>
             <button @click="toggleTimer" class="text-sm bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-3 rounded-md">
                 {{ timerRunning ? 'Pause' : 'Resume' }}
             </button>
-            <button @click="nextHalf" v-if="currentHalf < 2" class="text-sm bg-purple-500 hover:bg-purple-600 text-white py-2 px-3 rounded-md">
-                Next Half
-            </button>
-                <button @click="resetGame" class="text-sm bg-red-500 hover:bg-red-600 text-white py-2 px-3 rounded-md">Reset Game</button>
-            </div>
+            <button @click="resetGame" class="text-sm bg-red-500 hover:bg-red-600 text-white py-2 px-3 rounded-md">Reset Game</button>
         </div>
 
         <h3 class="text-xl font-semibold mb-2">On Court</h3>
         <transition-group name="fade" tag="ul" class="mb-4 space-y-2">
             <li v-for="player in onCourtPlayers" :key="player.id" class="bg-green-100 p-4 rounded-md flex items-center justify-between">
                 <span>{{ player.name }} - played: {{ formatTime(player.timePlayed) }}</span>
-                <button @click="substituteOut(player)" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded-md">Sub Out
-                </button>
+                <button @click="substituteOut(player)" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded-md">Sub Out</button>
             </li>
         </transition-group>
 
@@ -60,6 +69,8 @@
                 <button @click="substituteIn(player)" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded-md">Sub In</button>
             </li>
         </transition-group>
+
+        <button @click="returnToManage" class="mt-4 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-md">Return to Manage Menu</button>
     </div>
 </div>
 
@@ -73,9 +84,11 @@
             const gameStarted = ref(false)
             const gameTime = ref(0)
             const timerRunning = ref(false)
-            const currentHalf = ref(1)
+            const currentPeriod = ref(1)
+            const numberOfPeriods = ref(2)  // Default to 2 periods
+            const periodDuration = ref(10)  // Default to 10 minutes
             let timerInterval
-
+            
             const loadPlayers = () => {
                 const storedPlayers = localStorage.getItem('basketballPlayers')
                 if (storedPlayers) {
@@ -121,13 +134,23 @@
                 timerInterval = setInterval(() => {
                     gameTime.value++
                     onCourtPlayers.value.forEach(p => p.timePlayed++)
+
+                    // Stop the timer when the period duration is reached
+                    if (gameTime.value >= periodDuration.value * 60) {
+                        stopTimer()
+                        nextPeriod()
+                    }
                 }, 1000)
+            }
+
+            const stopTimer = () => {
+                clearInterval(timerInterval)
+                timerRunning.value = false
             }
 
             const toggleTimer = () => {
                 if (timerRunning.value) {
-                    clearInterval(timerInterval)
-                    timerRunning.value = false
+                    stopTimer()
                 } else {
                     startTimer()
                 }
@@ -149,20 +172,29 @@
 
             const resetGame = () => {
                 gameTime.value = 0
-                currentHalf.value = 1
+                currentPeriod.value = 1
                 presentPlayers.value.forEach(p => {
                     p.onCourt = false
                     p.timePlayed = 0
                 })
                 if (timerRunning.value) {
-                    clearInterval(timerInterval)
-                    timerRunning.value = false
+                    stopTimer()
                 }
             }
 
-            const nextHalf = () => {
-                if (currentHalf.value < 2) {
-                    currentHalf.value++
+            const returnToManage = () => {
+                gameStarted.value = false
+                resetGame()
+            }
+
+            const nextPeriod = () => {
+                if (currentPeriod.value < numberOfPeriods.value) {
+                    gameTime.value = 0 // Reset timer to zero forthe next period
+                    currentPeriod.value++
+                } else {
+                    // End of the game
+                    alert("Game Over!")
+                    resetGame()
                 }
             }
 
@@ -172,15 +204,46 @@
                 return `${mins}:${secs.toString().padStart(2, '0')}`
             }
 
+            const loadGameState = () => {
+                const storedGameState = localStorage.getItem('gameState')
+                if (storedGameState) {
+                    const state = JSON.parse(storedGameState)
+                    gameStarted.value = state.gameStarted
+                    gameTime.value = state.gameTime
+                    currentPeriod.value = state.currentPeriod
+                    timerRunning.value = state.timerRunning
+                    allPlayers.value = state.players
+                    numberOfPeriods.value = state.numberOfPeriods || 2
+                    periodDuration.value = state.periodDuration || 10
+                }
+            }
+
+            const saveGameState = () => {
+                const state = {
+                    gameStarted: gameStarted.value,
+                    gameTime: gameTime.value,
+                    currentPeriod: currentPeriod.value,
+                    timerRunning: timerRunning.value,
+                    players: allPlayers.value,
+                    numberOfPeriods: numberOfPeriods.value,
+                    periodDuration: periodDuration.value
+                }
+                localStorage.setItem('gameState', JSON.stringify(state))
+            }
+
             onMounted(() => {
                 loadPlayers()
+                loadGameState()
+                if (gameStarted.value && timerRunning.value) {
+                    startTimer()
+                }
             })
 
             onUnmounted(() => {
                 clearInterval(timerInterval)
             })
 
-            watch(allPlayers, savePlayers, {deep: true})
+            watch([gameStarted, gameTime, currentPeriod, timerRunning, allPlayers, numberOfPeriods, periodDuration], saveGameState, {deep: true})
 
             return {
                 allPlayers,
@@ -189,7 +252,9 @@
                 gameStarted,
                 gameTime,
                 timerRunning,
-                currentHalf,
+                currentPeriod,
+                numberOfPeriods,
+                periodDuration,
                 presentPlayers,
                 onCourtPlayers,
                 benchPlayers,
@@ -199,7 +264,8 @@
                 substituteOut,
                 substituteIn,
                 resetGame,
-                nextHalf,
+                returnToManage,
+                nextPeriod,
                 formatTime
             }
         }
