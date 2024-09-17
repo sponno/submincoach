@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basketball Substitution Manager</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        #app {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        input, button, select {
+            margin: 5px;
+            padding: 8px;
+        }
+        button {
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            background-color: #f1f1f1;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 4px;
+            transition: all 0.5s ease;
+        }
+        .player-on-court {
+            background-color: #e6ffe6;
+        }
+        .player-on-bench {
+            background-color: #ffe6e6;
+        }
+        .game-controls {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .game-controls button {
+            margin-left: 10px;
+        }
+        .fade-move,
+        .fade-enter-active,
+        .fade-leave-active {
+            transition: all 0.5s cubic-bezier(0.55, 0, 0.1, 1);
+        }
+        .fade-enter-from,
+        .fade-leave-to {
+            opacity: 0;
+            transform: scaleY(0.01) translate(30px, 0);
+        }
+        .fade-leave-active {
+            position: absolute;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>Basketball Substitution Manager</h1>
+
+        <div v-if="!gameStarted">
+            <h2>Manage Players</h2>
+            <input v-model="newPlayerName" @keyup.enter="addPlayer" placeholder="Enter player name">
+            <button @click="addPlayer">Add Player</button>
+            <ul>
+                <li v-for="player in allPlayers" :key="player.id">
+                    {{ player.name }}
+                    <input type="checkbox" v-model="player.present"> Present
+                </li>
+            </ul>
+            <button @click="startGame">Start Game</button>
+        </div>
+
+        <div v-else>
+            <div class="game-controls">
+                <h2>Game Time: {{ formatTime(gameTime) }}</h2>
+                <button @click="toggleTimer">{{ timerRunning ? 'Pause' : 'Resume' }}</button>
+                <button @click="resetGame">Reset Game</button>
+                <button @click="nextHalf" v-if="currentHalf < 2">Next Half</button>
+            </div>
+
+            <h3>On Court</h3>
+            <transition-group name="fade" tag="ul">
+                <li v-for="player in onCourtPlayers" :key="player.id" class="player-on-court">
+                    {{ player.name }} - Time played: {{ formatTime(player.timePlayed) }}
+                    <button @click="substituteOut(player)">Sub Out</button>
+                </li>
+            </transition-group>
+
+            <h3>On Bench</h3>
+            <transition-group name="fade" tag="ul">
+                <li v-for="player in benchPlayers" :key="player.id" class="player-on-bench">
+                    {{ player.name }} - Time played: {{ formatTime(player.timePlayed) }}
+                    <button @click="substituteIn(player)">Sub In</button>
+                </li>
+            </transition-group>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, onUnmounted, watch } = Vue
+
+        createApp({
+            setup() {
+                const allPlayers = ref([])
+                const newPlayerName = ref('')
+                const gameStarted = ref(false)
+                const gameTime = ref(0)
+                const timerRunning = ref(false)
+                const currentHalf = ref(1)
+                let timerInterval
+
+                const loadPlayers = () => {
+                    const storedPlayers = localStorage.getItem('basketballPlayers')
+                    if (storedPlayers) {
+                        allPlayers.value = JSON.parse(storedPlayers).map(p => ({...p, present: false, onCourt: false, timePlayed: 0}))
+                    }
+                }
+
+                const savePlayers = () => {
+                    localStorage.setItem('basketballPlayers', JSON.stringify(allPlayers.value.map(({id, name}) => ({id, name}))))
+                }
+
+                const addPlayer = () => {
+                    if (newPlayerName.value.trim()) {
+                        allPlayers.value.push({
+                            id: Date.now(),
+                            name: newPlayerName.value.trim(),
+                            present: true,
+                            onCourt: false,
+                            timePlayed: 0
+                        })
+                        newPlayerName.value = ''
+                        savePlayers()
+                    }
+                }
+
+                const presentPlayers = computed(() => allPlayers.value.filter(p => p.present))
+                const onCourtPlayers = computed(() => presentPlayers.value.filter(p => p.onCourt))
+                const benchPlayers = computed(() => presentPlayers.value.filter(p => !p.onCourt))
+
+                const startGame = () => {
+                    gameStarted.value = true
+                    startTimer()
+                }
+
+                const startTimer = () => {
+                    timerRunning.value = true
+                    timerInterval = setInterval(() => {
+                        gameTime.value++
+                        onCourtPlayers.value.forEach(p => p.timePlayed++)
+                    }, 1000)
+                }
+
+                const toggleTimer = () => {
+                    if (timerRunning.value) {
+                        clearInterval(timerInterval)
+                        timerRunning.value = false
+                    } else {
+                        startTimer()
+                    }
+                }
+
+                const substituteOut = (player) => {
+                    player.onCourt = false
+                    const index = presentPlayers.value.findIndex(p => p.id === player.id)
+                    presentPlayers.value.splice(index, 1)
+                    presentPlayers.value.push(player)
+                }
+
+                const substituteIn = (player) => {
+                    player.onCourt = true
+                    const index = presentPlayers.value.findIndex(p => p.id === player.id)
+                    presentPlayers.value.splice(index, 1)
+                    presentPlayers.value.push(player)
+                }
+
+                const resetGame = () => {
+                    gameTime.value = 0
+                    currentHalf.value = 1
+                    presentPlayers.value.forEach(p => {
+                        p.onCourt = false
+                        p.timePlayed = 0
+                    })
+                    if (timerRunning.value) {
+                        clearInterval(timerInterval)
+                        timerRunning.value = false
+                    }
+                }
+
+                const nextHalf = () => {
+                    if (currentHalf.value < 2) {
+                        currentHalf.value++
+                    }
+                }
+
+                const formatTime = (seconds) => {
+                    const mins = Math.floor(seconds / 60)
+                    const secs = seconds % 60
+                    return `${mins}:${secs.toString().padStart(2, '0')}`
+                }
+
+                onMounted(() => {
+                    loadPlayers()
+                })
+
+                onUnmounted(() => {
+                    clearInterval(timerInterval)
+                })
+
+                watch(allPlayers, savePlayers, { deep: true })
+
+                return {
+                    allPlayers,
+                    newPlayerName,
+                    gameStarted,
+                    gameTime,
+                    timerRunning,
+                    currentHalf,
+                    presentPlayers,
+                    onCourtPlayers,
+                    benchPlayers,
+                    addPlayer,
+                    startGame,
+                    toggleTimer,
+                    substituteOut,
+                    substituteIn,
+                    resetGame,
+                    nextHalf,
+                    formatTime
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
