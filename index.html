@@ -50,7 +50,10 @@
 
     <div v-else>
         <div class="game-controls mb-6 flex items-center gap-x-4">
-            <h2 class="text-2xl font-semibold">Period {{ currentPeriod }} - Time: {{ formatTime(gameTime) }}</h2>
+            <h2 class="text-2xl font-semibold">
+                Period {{ currentPeriod }} of {{ numberOfPeriods }} - 
+                Time: <span @click="toggleTimeDisplay" class="cursor-pointer">{{ displayTime }}</span>
+            </h2>
             <button @click="toggleTimer" class="text-sm bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-3 rounded-md">
                 {{ timerRunning ? 'Pause' : 'Resume' }}
             </button>
@@ -60,32 +63,32 @@
 
         <h3 class="text-xl font-semibold mb-2">On Court <span> - {{ onCourtPlayers.length }}</span></h3>
         <transition-group name="fade" tag="ul" class="mb-4 space-y-2">
-            <li v-for="player in onCourtPlayers" :key="player.id" class="p-4 rounded-md flex flex-col">
-                <div class="flex items-center justify-between mb-1">
+            <li v-for="player in onCourtPlayers" :key="player.id" class="p-4 rounded-md relative overflow-hidden">
+                <div class="absolute inset-0 bg-gray-100">
+                    <div class="h-full bg-green-200" :style="{ width: `${(player.timePlayedThisPeriod / (periodDuration * 60)) * 100}%` }"></div>
+                </div>
+                <div class="absolute inset-0 bg-gray-50">
+                    <div class="h-full bg-green-300" :style="{ width: `${(player.timePlayed / (periodDuration * 60 * numberOfPeriods)) * 100}%` }"></div>
+                </div>
+                <div class="flex items-center justify-between relative z-10">
                     <span>{{ player.name }} - played: {{ formatTime(player.timePlayed) }}</span>
                     <button @click="substituteOut(player)" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded-md">Sub Out</button>
-                </div>
-                <div class="w-full bg-green-200 rounded-full h-4 overflow-hidden">
-                    <div class="bg-green-500 h-full" :style="{ width: `${(player.timePlayedThisPeriod / (periodDuration * 60)) * 100}%` }"></div>
-                </div>
-                <div class="w-full bg-green-100 rounded-full h-0.5 mt-1 overflow-hidden">
-                    <div class="bg-green-700 h-full" :style="{ width: `${(player.timePlayed / (periodDuration * 60 * numberOfPeriods)) * 100}%` }"></div>
                 </div>
             </li>
         </transition-group>
 
         <h3 class="text-xl font-semibold mb-2">On Bench</h3>
         <transition-group name="fade" tag="ul" class="space-y-2">
-            <li v-for="player in benchPlayers" :key="player.id" class="p-4 rounded-md flex flex-col">
-                <div class="flex items-center justify-between mb-1">
+            <li v-for="player in benchPlayers" :key="player.id" class="p-4 rounded-md relative overflow-hidden">
+                <div class="absolute inset-0 bg-gray-100">
+                    <div class="h-full bg-gray-200" :style="{ width: `${(player.timePlayedThisPeriod / (periodDuration * 60)) * 100}%` }"></div>
+                </div>
+                <div class="absolute inset-0 bg-gray-50">
+                    <div class="h-full bg-gray-300" :style="{ width: `${(player.timePlayed / (periodDuration * 60 * numberOfPeriods)) * 100}%` }"></div>
+                </div>
+                <div class="flex items-center justify-between relative z-10">
                     <span>{{ player.name }} - played: {{ formatTime(player.timePlayed) }}</span>
                     <button @click="substituteIn(player)" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded-md">Sub In</button>
-                </div>
-                <div class="w-full bg-red-200 rounded-full h-4 overflow-hidden">
-                    <div class="bg-red-500 h-full" :style="{ width: `${(player.timePlayedThisPeriod / (periodDuration * 60)) * 100}%` }"></div>
-                </div>
-                <div class="w-full bg-red-100 rounded-full h-0.5 mt-1 overflow-hidden">
-                    <div class="bg-red-700 h-full" :style="{ width: `${(player.timePlayed / (periodDuration * 60 * numberOfPeriods)) * 100}%` }"></div>
                 </div>
             </li>
         </transition-group>
@@ -105,6 +108,7 @@
             const currentPeriod = ref(1)
             const numberOfPeriods = ref(2)  // Default to 2 periods
             const periodDuration = ref(10)  // Default to 10 minutes
+            const showCountUp = ref(false)
             let timerInterval
             
             const loadPlayers = () => {
@@ -151,22 +155,20 @@
 
             const startGame = () => {
                 gameStarted.value = true
-                if (!timerRunning.value) {
-                    startTimer()
-                }
+                gameTime.value = periodDuration.value * 60 // Set initial time to period duration in seconds
+                timerRunning.value = false // Start with the timer stopped
             }
 
             const startTimer = () => {
                 timerRunning.value = true
                 timerInterval = setInterval(() => {
-                    gameTime.value++
+                    gameTime.value--
                     onCourtPlayers.value.forEach(p => {
                         p.timePlayed++
                         p.timePlayedThisPeriod++
                     })
 
-                    // Stop the timer when the period duration is reached
-                    if (gameTime.value >= periodDuration.value * 60) {
+                    if (gameTime.value <= 0) {
                         stopTimer()
                         nextPeriod()
                     }
@@ -202,7 +204,7 @@
 
             const resetGame = () => {
                 if (confirm("Are you sure you want to reset the game? This will clear all player times and start over.")) {
-                    gameTime.value = 0
+                    gameTime.value = periodDuration.value * 60
                     currentPeriod.value = 1
                     allPlayers.value.forEach(p => {
                         p.onCourt = false
@@ -223,22 +225,35 @@
 
             const nextPeriod = () => {
                 if (currentPeriod.value < numberOfPeriods.value) {
-                    gameTime.value = 0 // Reset timer to zero for the next period
+                    gameTime.value = periodDuration.value * 60 // Reset timer to period duration for the next period
                     currentPeriod.value++
                     // Reset timePlayedThisPeriod for all players
                     allPlayers.value.forEach(p => p.timePlayedThisPeriod = 0)
                 } else {
                     // End of the game
+                    stopTimer()
                     alert("Game Over!")
-                    resetGame()
+                    // We don't reset the game here anymore
                 }
             }
 
             const formatTime = (seconds) => {
-                const mins = Math.floor(seconds / 60)
-                const secs = seconds % 60
+                const mins = Math.floor(Math.abs(seconds) / 60)
+                const secs = Math.abs(seconds) % 60
                 return `${mins}:${secs.toString().padStart(2, '0')}`
             }
+
+            const toggleTimeDisplay = () => {
+                showCountUp.value = !showCountUp.value
+            }
+
+            const displayTime = computed(() => {
+                if (showCountUp.value) {
+                    return formatTime(periodDuration.value * 60 - gameTime.value)
+                } else {
+                    return formatTime(gameTime.value)
+                }
+            })
 
             const loadGameState = () => {
                 const storedGameState = localStorage.getItem('gameState')
@@ -316,7 +331,10 @@
                 resetGame,
                 returnToManage,
                 nextPeriod,
-                formatTime
+                formatTime,
+                showCountUp,
+                toggleTimeDisplay,
+                displayTime
             }
         }
     }).mount('#app')
