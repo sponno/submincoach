@@ -6,6 +6,7 @@
     <title>Basketball Substitution Manager</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.min.js"></script>
     <link href="output.css" rel="stylesheet">
+    <script defer data-domain="submeincoach.com" src="https://plausible.io/js/script.js"></script>
 </head>
 <body class="bg-gray-100 p-0">
 <div id="app" class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-lg">
@@ -48,12 +49,13 @@
     </div>
 
     <div v-else>
-        <div class="game-controls mb-6 flex items-center gap-x-6">
+        <div class="game-controls mb-6 flex items-center gap-x-4">
             <h2 class="text-2xl font-semibold">Period {{ currentPeriod }} - Time: {{ formatTime(gameTime) }}</h2>
             <button @click="toggleTimer" class="text-sm bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-3 rounded-md">
                 {{ timerRunning ? 'Pause' : 'Resume' }}
             </button>
             <button @click="returnToManage" class="text-sm bg-gray-500 hover:bg-gray-600 text-white py-2 px-3 rounded-md">Manage Players</button>
+            <button @click="resetGame" class="text-sm bg-red-500 hover:bg-red-600 text-white py-2 px-3 rounded-md">Reset Game</button>
         </div>
 
         <h3 class="text-xl font-semibold mb-2">On Court <span> - {{ onCourtPlayers.length }}</span></h3>
@@ -199,15 +201,18 @@
             }
 
             const resetGame = () => {
-                gameTime.value = 0
-                currentPeriod.value = 1
-                allPlayers.value.forEach(p => {
-                    p.onCourt = false
-                    p.timePlayed = 0
-                    p.timePlayedThisPeriod = 0
-                })
-                if (timerRunning.value) {
-                    stopTimer()
+                if (confirm("Are you sure you want to reset the game? This will clear all player times and start over.")) {
+                    gameTime.value = 0
+                    currentPeriod.value = 1
+                    allPlayers.value.forEach(p => {
+                        p.onCourt = false
+                        p.timePlayed = 0
+                        p.timePlayedThisPeriod = 0
+                    })
+                    if (timerRunning.value) {
+                        stopTimer()
+                    }
+                    gameStarted.value = false
                 }
             }
 
