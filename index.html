@@ -54,8 +54,8 @@
                 Period {{ currentPeriod }} of {{ numberOfPeriods }} - 
                 Time: <span @click="toggleTimeDisplay" class="cursor-pointer">{{ displayTime }}</span>
             </h2>
-            <button @click="toggleTimer" class="text-sm bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-3 rounded-md">
-                {{ timerRunning ? 'Pause' : 'Resume' }}
+            <button @click="toggleTimer" class="text-sm bg-yellow-500 w-[180px] hover:bg-yellow-600 text-white py-2 px-3 rounded-md">
+                {{ timerRunning ? 'Pause' : 'Play' }}
             </button>
             <button @click="returnToManage" class="text-sm bg-gray-500 hover:bg-gray-600 text-white py-2 px-3 rounded-md">Manage Players</button>
             <button @click="resetGame" class="text-sm bg-red-500 hover:bg-red-600 text-white py-2 px-3 rounded-md">Reset Game</button>
@@ -71,7 +71,7 @@
                     <div class="h-full bg-green-300" :style="{ width: `${(player.timePlayed / (periodDuration * 60 * numberOfPeriods)) * 100}%` }"></div>
                 </div>
                 <div class="flex items-center justify-between relative z-10">
-                    <span>{{ player.name }} - played: {{ formatTime(player.timePlayed) }}</span>
+                    <span><b>{{ player.name }}</b> - played: {{ formatTime(player.timePlayed) }}</span>
                     <button @click="substituteOut(player)" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded-md">Sub Out</button>
                 </div>
             </li>
@@ -87,7 +87,7 @@
                     <div class="h-full bg-gray-300" :style="{ width: `${(player.timePlayed / (periodDuration * 60 * numberOfPeriods)) * 100}%` }"></div>
                 </div>
                 <div class="flex items-center justify-between relative z-10">
-                    <span>{{ player.name }} - played: {{ formatTime(player.timePlayed) }}</span>
+                    <span><b>{{ player.name }}</b> - played: {{ formatTime(player.timePlayed) }}</span>
                     <button @click="substituteIn(player)" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded-md">Sub In</button>
                 </div>
             </li>

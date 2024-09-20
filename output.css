@@ -643,6 +643,14 @@ video {
   width: 50%;
 }
 
+.w-14 {
+  width: 3.5rem;
+}
+
+.w-\[180px\] {
+  width: 180px;
+}
+
 .max-w-2xl {
   max-width: 42rem;
 }
