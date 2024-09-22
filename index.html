@@ -10,15 +10,15 @@
 </head>
 <body class="bg-gray-100 p-0">
 <div id="app" class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-lg">
-    <h1 class="text-xl font-bold mb-2 text-gray-800" v-if="!gameStarted">SUB ME IN COACH</h1>
+    <h1 class="text-xl font-bold mb-2 text-gray-800" v-if="showManagePlayers">SUB ME IN COACH</h1>
     <h1 class="text-sm font-bold mb-1 text-gray-800" v-else>SUB ME IN COACH</h1>
 
-    <div v-if="!gameStarted">
+    <div v-if="showManagePlayers">
         <h2 class="text-2xl font-semibold mb-2">My Players</h2>
         <div class="mb-4 flex space-x-2">
             <input v-model="newPlayerName" @keyup.enter="addPlayer" placeholder="Enter player name"
                    class="border border-gray-300 p-2 rounded-md flex-1"/>
-            <button @click="addPlayer" class="bg-purple-500 hover:bg-green-600 text-white py-2 px-4 rounded-md">Add Player</button>
+            <button @click="addPlayer" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md">Add Player</button>
         </div>
         
         <div class="flex justify-between mb-4">
@@ -42,10 +42,12 @@
                     <span>{{ player.name }}</span>
                     <label class="flex items-center">playing &nbsp;<input type="checkbox" v-model="player.present" class="w-4 h-4"></label>
                 </div>
-                <button @click="removePlayer(player)">&times;</button>
+                <button class="text-red-300 font-bold" @click="removePlayer(player)">&times;</button>
             </li>
         </ul>
-        <button @click="startGame" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md">Start Game</button>
+        <div class="w-full text-right pr-8">
+            <button @click="startGame" class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-md font-bold">Start Game &rarr;</button>
+        </div>
     </div>
 
     <div v-else>
@@ -61,6 +63,7 @@
              </div>    
              <div class="flex space-x-2">
                  <a @click="returnToManage" class="text-sm text-blue-500 underline  cursor-pointer">Manage Players</a>
+                 <a @click="resetPeriod" class="text-sm text-blue-500 underline cursor-pointer">Reset Period</a>
                  <a @click="resetGame" class="text-sm text-blue-500 underline cursor-pointer">Reset Game</a>
              </div>
         </div>
@@ -83,7 +86,7 @@
 
         <h3 class="text-xl font-semibold mb-2">On Bench</h3>
         <transition-group name="fade" tag="ul" class="space-y-2">
-            <li v-for="player in benchPlayers" :key="player.id" class="p-4 rounded-md relative overflow-hidden">
+            <li v-for="player in benchPlayers" :key="player.id" class="py-1 px-3  rounded-md relative overflow-hidden">
                 <div class="absolute inset-0 bg-gray-100">
                     <div class="h-full bg-gray-200" :style="{ width: `${(player.timePlayedThisPeriod / (periodDuration * 60)) * 100}%` }"></div>
                 </div>
@@ -100,37 +103,38 @@
 </div>
 
 <script>
-    const {createApp, ref, computed, onMounted, onUnmounted, watch} = Vue
+    const { createApp, ref, computed, onMounted, onUnmounted, watch } = Vue;
 
     createApp({
         setup() {
-            const allPlayers = ref([])
-            const newPlayerName = ref('')
-            const gameStarted = ref(false)
-            const gameTime = ref(0)
-            const timerRunning = ref(false)
-            const currentPeriod = ref(1)
-            const numberOfPeriods = ref(2)  // Default to 2 periods
-            const periodDuration = ref(10)  // Default to 10 minutes
-            const showCountUp = ref(false)
-            let timerInterval
-            
+            const allPlayers = ref([]);
+            const newPlayerName = ref('');
+            const gameStarted = ref(false);
+            const gameTime = ref(0);
+            const timerRunning = ref(false);
+            const currentPeriod = ref(1);
+            const numberOfPeriods = ref(2); // Default to 2 periods
+            const periodDuration = ref(10); // Default to 10 minutes
+            const showCountUp = ref(false);
+            const showManagePlayers = ref(true); // New variable to control the view
+            let timerInterval;
+
             const loadPlayers = () => {
-                const storedPlayers = localStorage.getItem('basketballPlayers')
+                const storedPlayers = localStorage.getItem('basketballPlayers');
                 if (storedPlayers) {
                     allPlayers.value = JSON.parse(storedPlayers).map(p => ({
                         ...p, 
-                        present: false, 
-                        onCourt: false, 
-                        timePlayed: 0,
-                        timePlayedThisPeriod: 0
-                    }))
+                        present: p.present || false, 
+                        onCourt: p.onCourt || false, 
+                        timePlayed: p.timePlayed || 0,
+                        timePlayedThisPeriod: p.timePlayedThisPeriod || 0
+                    }));
                 }
-            }
+            };
 
             const savePlayers = () => {
-                localStorage.setItem('basketballPlayers', JSON.stringify(allPlayers.value.map(({id, name}) => ({id, name}))))
-            }
+                localStorage.setItem('basketballPlayers', JSON.stringify(allPlayers.value.map(({id, name, present, onCourt, timePlayed, timePlayedThisPeriod}) => ({id, name, present, onCourt, timePlayed, timePlayedThisPeriod}))));
+            };
 
             const addPlayer = () => {
                 if (newPlayerName.value.trim()) {
@@ -141,136 +145,171 @@
                         onCourt: false,
                         timePlayed: 0,
                         timePlayedThisPeriod: 0
-                    })
-                    newPlayerName.value = ''
-                    savePlayers()
+                    });
+                    newPlayerName.value = '';
+                    savePlayers();
                 }
-            }
+            };
 
             const removePlayer = (player) => {
-                const index = allPlayers.value.findIndex(p => p.id === player.id)
-                allPlayers.value.splice(index, 1)
-                savePlayers()
-            }
+                const index = allPlayers.value.findIndex(p => p.id === player.id);
+                allPlayers.value.splice(index, 1);
+                savePlayers();
+            };
 
-            const presentPlayers = computed(() => allPlayers.value.filter(p => p.present))
-            const onCourtPlayers = computed(() => presentPlayers.value.filter(p => p.onCourt))
-            const benchPlayers = computed(() => presentPlayers.value.filter(p => !p.onCourt))
+            const presentPlayers = computed(() => allPlayers.value.filter(p => p.present));
+            const onCourtPlayers = computed(() => presentPlayers.value.filter(p => p.onCourt));
+            const benchPlayers = computed(() => presentPlayers.value.filter(p => !p.onCourt));
 
             const startGame = () => {
-                console.log('game started',timerRunning.value, "gameTime.value ", gameTime.value )
-                gameStarted.value = true
-                gameTime.value = periodDuration.value * 60 // Set initial time to period duration in seconds
-                timerRunning.value = false // Start with the timer stopped
-            }
+                if (!gameStarted.value) {
+                    console.log('Starting new game');
+                    gameStarted.value = true;
+                    gameTime.value = periodDuration.value * 60; // Set initial time to period duration in seconds
+                    timerRunning.value = false; // Start with the timer stopped
+                    currentPeriod.value = 1; // Reset to first period
+                    allPlayers.value.forEach(p => {
+                        p.timePlayed = 0;
+                        p.timePlayedThisPeriod = 0;
+                        // Initialize onCourt status based on present status
+                        p.onCourt = p.present && p.onCourt;
+                    });
+                } else {
+                    console.log('Resuming game');
+                }
+                showManagePlayers.value = false; // Switch to the game view
+            };
+
+            const returnToGame = () => {
+                console.log('Returning to existing game');
+                gameStarted.value = true;
+                // If the timer was running, restart it
+                if (timerRunning.value) {
+                    stopTimer();
+                    startTimer();
+                }
+            };
 
             const startTimer = () => {
-                timerRunning.value = true
+                timerRunning.value = true;
                 timerInterval = setInterval(() => {
-                    gameTime.value--
+                    gameTime.value--;
                     onCourtPlayers.value.forEach(p => {
-                        p.timePlayed++
-                        p.timePlayedThisPeriod++
-                    })
+                        p.timePlayed++;
+                        p.timePlayedThisPeriod++;
+                    });
 
                     if (gameTime.value <= 0) {
-                        stopTimer()
-                        nextPeriod()
+                        stopTimer();
+                        nextPeriod();
                     }
-                }, 1000)
-            }
+                }, 1000);
+            };
 
             const stopTimer = () => {
-                clearInterval(timerInterval)
-                timerRunning.value = false
-            }
+                clearInterval(timerInterval);
+                timerRunning.value = false;
+            };
 
             const toggleTimer = () => {
                 if (timerRunning.value) {
-                    stopTimer()
+                    stopTimer();
                 } else {
-                    startTimer()
+                    startTimer();
                 }
-            }
+            };
 
             const substituteOut = (player) => {
-                player.onCourt = false
-                const index = presentPlayers.value.findIndex(p => p.id === player.id)
-                presentPlayers.value.splice(index, 1)
-                presentPlayers.value.push(player)
-            }
+                player.onCourt = false;
+                savePlayers();
+            };
 
             const substituteIn = (player) => {
-                player.onCourt = true
-                const index = presentPlayers.value.findIndex(p => p.id === player.id)
-                presentPlayers.value.splice(index, 1)
-                presentPlayers.value.push(player)
-            }
+                player.onCourt = true;
+                savePlayers();
+            };
 
             const resetGame = () => {
                 if (confirm("Are you sure you want to reset the game? This will clear all player times and start over.")) {
-                    gameTime.value = periodDuration.value * 60
-                    currentPeriod.value = 1
+                    gameTime.value = periodDuration.value * 60;
+                    currentPeriod.value = 1;
                     allPlayers.value.forEach(p => {
-                        p.onCourt = false
-                        p.timePlayed = 0
-                        p.timePlayedThisPeriod = 0
-                    })
+                        p.onCourt = false;
+                        p.timePlayed = 0;
+                        p.timePlayedThisPeriod = 0;
+                    });
                     if (timerRunning.value) {
-                        stopTimer()
+                        stopTimer();
                     }
-                    gameStarted.value = false
+                    gameStarted.value = false;
+                    showManagePlayers.value = true; // Return to manage players view
+                    savePlayers();
                 }
-            }
+            };
+
+            const resetPeriod = () => {
+                if (confirm("Are you sure you want to reset the current period? This will reset the period timer and clear player times for this period.")) {
+                    gameTime.value = periodDuration.value * 60;
+                    allPlayers.value.forEach(p => {
+                        p.timePlayedThisPeriod = 0;
+                    });
+                    if (timerRunning.value) {
+                        stopTimer();
+                    }
+                    savePlayers();
+                }
+            };
 
             const returnToManage = () => {
-                gameStarted.value = false
-                // We don't reset the game here anymore
-            }
+                showManagePlayers.value = true; // Switch to the manage players view
+                savePlayers();
+            };
 
             const nextPeriod = () => {
                 if (currentPeriod.value < numberOfPeriods.value) {
-                    gameTime.value = periodDuration.value * 60 // Reset timer to period duration for the next period
-                    currentPeriod.value++
+                    gameTime.value = periodDuration.value * 60; // Reset timer to period duration for the next period
+                    currentPeriod.value++;
                     // Reset timePlayedThisPeriod for all players
-                    allPlayers.value.forEach(p => p.timePlayedThisPeriod = 0)
+                    allPlayers.value.forEach(p => p.timePlayedThisPeriod = 0);
                 } else {
                     // End of the game
-                    stopTimer()
-                    alert("Game Over!")
-                    // We don't reset the game here anymore
+                    stopTimer();
+                    alert("Game Over!");
+                    // Optionally, reset the game or keep the state
                 }
-            }
+                savePlayers();
+            };
 
             const formatTime = (seconds) => {
-                const mins = Math.floor(Math.abs(seconds) / 60)
-                const secs = Math.abs(seconds) % 60
-                return `${mins}:${secs.toString().padStart(2, '0')}`
-            }
+                const mins = Math.floor(Math.abs(seconds) / 60);
+                const secs = Math.abs(seconds) % 60;
+                return `${mins}:${secs.toString().padStart(2, '0')}`;
+            };
 
             const toggleTimeDisplay = () => {
-                showCountUp.value = !showCountUp.value
-            }
+                showCountUp.value = !showCountUp.value;
+            };
 
             const displayTime = computed(() => {
                 if (showCountUp.value) {
-                    return formatTime(periodDuration.value * 60 - gameTime.value)
+                    return formatTime(periodDuration.value * 60 - gameTime.value);
                 } else {
-                    return formatTime(gameTime.value)
+                    return formatTime(gameTime.value);
                 }
-            })
+            });
 
             const loadGameState = () => {
-                const storedGameState = localStorage.getItem('gameState')
+                const storedGameState = localStorage.getItem('gameState');
                 if (storedGameState) {
-                    const state = JSON.parse(storedGameState)
-                    gameStarted.value = state.gameStarted
-                    gameTime.value = state.gameTime
-                    currentPeriod.value = state.currentPeriod
-                    timerRunning.value = state.timerRunning
-                    allPlayers.value = state.players
+                    const state = JSON.parse(storedGameState);
+                    gameStarted.value = state.gameStarted;
+                    gameTime.value = state.gameTime;
+                    currentPeriod.value = state.currentPeriod;
+                    timerRunning.value = state.timerRunning;
+                    allPlayers.value = state.players;
+                    showManagePlayers.value = state.showManagePlayers !== undefined ? state.showManagePlayers : true;
                 }
-            }
+            };
 
             const saveGameState = () => {
                 const state = {
@@ -278,42 +317,43 @@
                     gameTime: gameTime.value,
                     currentPeriod: currentPeriod.value,
                     timerRunning: timerRunning.value,
-                    players: allPlayers.value
-                }
-                localStorage.setItem('gameState', JSON.stringify(state))
-            }
+                    players: allPlayers.value,
+                    showManagePlayers: showManagePlayers.value
+                };
+                localStorage.setItem('gameState', JSON.stringify(state));
+            };
 
             const loadGameSettings = () => {
-                const storedNumberOfPeriods = localStorage.getItem('numberOfPeriods')
-                const storedPeriodDuration = localStorage.getItem('periodDuration')
+                const storedNumberOfPeriods = localStorage.getItem('numberOfPeriods');
+                const storedPeriodDuration = localStorage.getItem('periodDuration');
                 if (storedNumberOfPeriods) {
-                    numberOfPeriods.value = parseInt(storedNumberOfPeriods)
+                    numberOfPeriods.value = parseInt(storedNumberOfPeriods);
                 }
                 if (storedPeriodDuration) {
-                    periodDuration.value = parseInt(storedPeriodDuration)
+                    periodDuration.value = parseInt(storedPeriodDuration);
                 }
-            }
+            };
 
             const saveGameSettings = () => {
-                localStorage.setItem('numberOfPeriods', numberOfPeriods.value)
-                localStorage.setItem('periodDuration', periodDuration.value)
-            }
+                localStorage.setItem('numberOfPeriods', numberOfPeriods.value);
+                localStorage.setItem('periodDuration', periodDuration.value);
+            };
 
             onMounted(() => {
-                loadPlayers()
-                loadGameState()
-                loadGameSettings()
+                loadPlayers();
+                loadGameState();
+                loadGameSettings();
                 if (gameStarted.value && timerRunning.value) {
-                    startTimer()
+                    startTimer();
                 }
-            })
+            });
 
             onUnmounted(() => {
-                clearInterval(timerInterval)
-            })
+                clearInterval(timerInterval);
+            });
 
-            watch([gameStarted, gameTime, currentPeriod, timerRunning, allPlayers], saveGameState, {deep: true})
-            watch([numberOfPeriods, periodDuration], saveGameSettings)
+            watch([gameStarted, gameTime, currentPeriod, timerRunning, allPlayers, showManagePlayers], saveGameState, {deep: true});
+            watch([numberOfPeriods, periodDuration], saveGameSettings);
 
             return {
                 allPlayers,
@@ -330,19 +370,22 @@
                 benchPlayers,
                 addPlayer,
                 startGame,
+                returnToGame,
                 toggleTimer,
                 substituteOut,
                 substituteIn,
                 resetGame,
+                resetPeriod,
                 returnToManage,
                 nextPeriod,
                 formatTime,
                 showCountUp,
                 toggleTimeDisplay,
-                displayTime
-            }
+                displayTime,
+                showManagePlayers
+            };
         }
-    }).mount('#app')
+    }).mount('#app');
 </script>
 </body>
 </html>
