@@ -51,20 +51,20 @@
     </div>
 
     <div v-else>
-        <div class="game-controls mb-6  items-center gap-x-4">
+        <div class="game-controls mb-4  items-center gap-x-4">
            <div class="flex space-x-10">
             <h2 class="text-lg   font-semibold">
-                Period {{ currentPeriod }} of {{ numberOfPeriods }} - 
-                Time: <span @click="toggleTimeDisplay" class="cursor-pointer">{{ displayTime }}</span>
+                <a class="border-b border-light-blue-300" @click='nextPeriod'>Period {{ currentPeriod }} of {{ numberOfPeriods }}</a> - 
+                Time: <span @click="toggleTimeDisplay" class="">{{ displayTime }}</span>
             </h2>
             <button @click="toggleTimer" class="text-xs bg-green-500 w-[80px] hover:bg-green-600 text-white py-1 px-1 rounded-md">
                 {{ timerRunning ? 'Pause' : 'Start' }}
             </button>
              </div>    
-             <div class="flex space-x-2">
-                 <a @click="returnToManage" class="text-sm text-blue-500 underline  cursor-pointer">Manage Players</a>
-                 <a @click="resetPeriod" class="text-sm text-blue-500 underline cursor-pointer">Reset Period</a>
-                 <a @click="resetGame" class="text-sm text-blue-500 underline cursor-pointer">Reset Game</a>
+             <div class="flex space-x-2 mt-2">
+                 <a @click="resetPeriod" class="text-sm text-blue-500 underline cursor-pointer">restart timer</a>
+                 <a @click="resetGame" class="text-sm text-blue-500 underline cursor-pointer">reset game</a>  
+                 <a @click="returnToManage" class="text-sm text-blue-500 underline  cursor-pointer">manager players</a>
              </div>
         </div>
 
@@ -267,17 +267,36 @@
 
             const nextPeriod = () => {
                 if (currentPeriod.value < numberOfPeriods.value) {
-                    gameTime.value = periodDuration.value * 60; // Reset timer to period duration for the next period
-                    currentPeriod.value++;
-                    // Reset timePlayedThisPeriod for all players
-                    allPlayers.value.forEach(p => p.timePlayedThisPeriod = 0);
+                    if (confirm("Are you sure you want to move to the next period?")) {
+                        gameTime.value = periodDuration.value * 60; // Reset timer to period duration for the next period
+                        currentPeriod.value++;
+                        // Reset timePlayedThisPeriod for all players
+                        allPlayers.value.forEach(p => p.timePlayedThisPeriod = 0);
+                        if (timerRunning.value) {
+                            stopTimer();
+                        }
+                        savePlayers();
+                    }
                 } else {
-                    // End of the game
-                    stopTimer();
-                    alert("Game Over!");
-                    // Optionally, reset the game or keep the state
+                    alert("This is the last period.");
                 }
-                savePlayers();
+            };
+
+            const previousPeriod = () => {
+                if (currentPeriod.value > 1) {
+                    if (confirm("Are you sure you want to move to the previous period?")) {
+                        gameTime.value = periodDuration.value * 60; // Reset timer to period duration for the previous period
+                        currentPeriod.value--;
+                        // Reset timePlayedThisPeriod for all players
+                        allPlayers.value.forEach(p => p.timePlayedThisPeriod = 0);
+                        if (timerRunning.value) {
+                            stopTimer();
+                        }
+                        savePlayers();
+                    }
+                } else {
+                    alert("This is the first period.");
+                }
             };
 
             const formatTime = (seconds) => {
@@ -378,6 +397,7 @@
                 resetPeriod,
                 returnToManage,
                 nextPeriod,
+                previousPeriod,
                 formatTime,
                 showCountUp,
                 toggleTimeDisplay,
