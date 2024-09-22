@@ -55,20 +55,44 @@
            <div class="flex space-x-10">
             <h2 class="text-lg   font-semibold">
                 <a class="border-b border-light-blue-300" @click='nextPeriod'>Period {{ currentPeriod }} of {{ numberOfPeriods }}</a> - 
-                Time: <span @click="toggleTimeDisplay" class="">{{ displayTime }}</span>
+                 <span @click="toggleTimeDisplay" class="">{{ displayTime }}</span>
             </h2>
             <button @click="toggleTimer" class="text-xs bg-green-500 w-[80px] hover:bg-green-600 text-white py-1 px-1 rounded-md">
                 {{ timerRunning ? 'Pause' : 'Start' }}
             </button>
+            
              </div>    
              <div class="flex space-x-2 mt-2">
-                 <a @click="resetPeriod" class="text-sm text-blue-500 underline cursor-pointer">restart timer</a>
-                 <a @click="resetGame" class="text-sm text-blue-500 underline cursor-pointer">reset game</a>  
-                 <a @click="returnToManage" class="text-sm text-blue-500 underline  cursor-pointer">manager players</a>
+                 <a @click="returnToManage" class="text-sm text-blue-500 underline cursor-pointer">change players</a>
+                 <a @click="resetPeriod" class="text-sm text-blue-500 underline cursor-pointer">reset timer</a>
+                 <a @click="resetGame" class="text-sm text-blue-500 underline cursor-pointer">new game</a>
              </div>
         </div>
 
-        <h3 class="text-xl font-semibold mb-2">On Court <span> - {{ onCourtPlayers.length }}</span></h3>
+              <!-- Auto Sub Alert Popup -->
+              <div v-if="autoSubAlert" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" id="my-modal">
+                <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                    <div class="mt-3 text-center">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">Next Sub</h3>
+                        <div class="mt-2 px-7 py-3 w-96">
+                            <p class="text-lg text-gray-800">
+                                <span class="w-8">OFF: </span><strong>{{ autoSubAlert.out.name }}</strong><br>
+                                <span class="w-8">ON: </span><strong>{{ autoSubAlert.in.name }}</strong>
+                            </p>
+                        </div>
+                        <div class="items-center px-4 py-3">
+                            <button @click="confirmAutoSub" class="px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        <div class="text-xl font-semibold mb-2 flex justify-between">
+            <div>On Court <span> - {{ onCourtPlayers.length }}</span></div>
+            <button @click="autoSub" class="ml-2 bg-blue-500 hover:bg-blue-600 text-white text-xs py-2 px-3 font-bold rounded-md">Next Sub</button>
+        </div>
         <transition-group name="fade" tag="ul" class="mb-4 space-y-1">
             <li v-for="player in onCourtPlayers" :key="player.id" class="py-1 px-3 rounded-md relative overflow-hidden">
                 <div class="absolute inset-0 bg-gray-100">
@@ -79,8 +103,11 @@
                 </div>
                 <div class="flex items-center justify-between relative z-10">
                     <span><b>{{ player.name }}</b> - played: {{ formatTime(player.timePlayed) }}</span>
-                    <button @click="substituteOut(player)" class="bg-blue-500 hover:bg-blue-600 text-white text-xs  py-2 px-3 font-bold rounded-md">Sub Out</button>
+                    <button @click="substituteOut(player)" class="bg-blue-500 hover:bg-blue-600 text-white text-xs  py-1 px-2 font-bold rounded-md">Sub Out</button>
                 </div>
+            </li>
+            <li v-if="onCourtPlayers.length === 0" class="py-4 px-3 bg-blue-50 text-blue-800 rounded-md text-center">
+                Select your starting players, then click start
             </li>
         </transition-group>
 
@@ -95,7 +122,7 @@
                 </div>
                 <div class="flex items-center justify-between relative z-10">
                     <span><b>{{ player.name }}</b> - played: {{ formatTime(player.timePlayed) }}</span>
-                    <button @click="substituteIn(player)" class="bg-blue-500 hover:bg-blue-600 text-white text-xs  py-2 px-3 font-bold py-1 px-3 rounded-md">Sub In</button>
+                    <button @click="substituteIn(player)" class="bg-blue-500 hover:bg-blue-600 text-white text-xs   font-bold py-1 px-2 rounded-md">Sub In</button>
                 </div>
             </li>
         </transition-group>
@@ -120,6 +147,7 @@ Powered by <a href="https://goodsign.io/" target="_blank" class="xunderline text
             const showCountUp = ref(false);
             const showManagePlayers = ref(true); // New variable to control the view
             let timerInterval;
+            const autoSubAlert = ref(null);
 
             const loadPlayers = () => {
                 const storedPlayers = localStorage.getItem('basketballPlayers');
@@ -250,7 +278,7 @@ Powered by <a href="https://goodsign.io/" target="_blank" class="xunderline text
             };
 
             const resetPeriod = () => {
-                if (confirm("Are you sure you want to reset the current period? This will reset the period timer and clear player times for this period.")) {
+                //if (confirm("Are you sure you want to reset the current period? This will reset the period timer and clear player times for this period.")) {
                     gameTime.value = periodDuration.value * 60;
                     allPlayers.value.forEach(p => {
                         p.timePlayedThisPeriod = 0;
@@ -259,7 +287,7 @@ Powered by <a href="https://goodsign.io/" target="_blank" class="xunderline text
                         stopTimer();
                     }
                     savePlayers();
-                }
+               // }
             };
 
             const returnToManage = () => {
@@ -280,7 +308,7 @@ Powered by <a href="https://goodsign.io/" target="_blank" class="xunderline text
                         savePlayers();
                     }
                 } else {
-                    alert("This is the last period.");
+                    alert("Game Over 🎉");
                 }
             };
 
@@ -360,6 +388,35 @@ Powered by <a href="https://goodsign.io/" target="_blank" class="xunderline text
                 localStorage.setItem('periodDuration', periodDuration.value);
             };
 
+            const autoSub = () => {
+                if (onCourtPlayers.value.length === 0 || benchPlayers.value.length === 0) {
+                    alert("Unable to perform auto-sub. Ensure you have players both on court and on bench.");
+                    return;
+                }
+
+                const playerToSubOut = onCourtPlayers.value.reduce((max, player) => 
+                    max.timePlayed > player.timePlayed ? max : player
+                );
+
+                const playerToSubIn = benchPlayers.value.reduce((min, player) => 
+                    min.timePlayed < player.timePlayed ? min : player
+                );
+
+                autoSubAlert.value = {
+                    out: playerToSubOut,
+                    in: playerToSubIn
+                };
+            };
+
+            const confirmAutoSub = () => {
+                if (autoSubAlert.value) {
+                    autoSubAlert.value.out.onCourt = false;
+                    autoSubAlert.value.in.onCourt = true;
+                    savePlayers();
+                    autoSubAlert.value = null;
+                }
+            };
+
             onMounted(() => {
                 loadPlayers();
                 loadGameState();
@@ -404,7 +461,10 @@ Powered by <a href="https://goodsign.io/" target="_blank" class="xunderline text
                 showCountUp,
                 toggleTimeDisplay,
                 displayTime,
-                showManagePlayers
+                showManagePlayers,
+                autoSub,
+                autoSubAlert,
+                confirmAutoSub
             };
         }
     }).mount('#app');
