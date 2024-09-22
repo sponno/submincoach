@@ -49,21 +49,25 @@
     </div>
 
     <div v-else>
-        <div class="game-controls mb-6 flex items-center gap-x-4">
-            <h2 class="text-2xl font-semibold">
+        <div class="game-controls mb-6  items-center gap-x-4">
+           <div class="flex space-x-10">
+            <h2 class="text-lg   font-semibold">
                 Period {{ currentPeriod }} of {{ numberOfPeriods }} - 
                 Time: <span @click="toggleTimeDisplay" class="cursor-pointer">{{ displayTime }}</span>
             </h2>
-            <button @click="toggleTimer" class="text-sm bg-yellow-500 w-[180px] hover:bg-yellow-600 text-white py-2 px-3 rounded-md">
-                {{ timerRunning ? 'Pause' : 'Play' }}
+            <button @click="toggleTimer" class="text-xs bg-green-500 w-[80px] hover:bg-green-600 text-white py-1 px-1 rounded-md">
+                {{ timerRunning ? 'Pause' : 'Start' }}
             </button>
-            <button @click="returnToManage" class="text-sm bg-gray-500 hover:bg-gray-600 text-white py-2 px-3 rounded-md">Manage Players</button>
-            <button @click="resetGame" class="text-sm bg-red-500 hover:bg-red-600 text-white py-2 px-3 rounded-md">Reset Game</button>
+             </div>    
+             <div class="flex space-x-2">
+                 <a @click="returnToManage" class="text-sm text-blue-500 underline  cursor-pointer">Manage Players</a>
+                 <a @click="resetGame" class="text-sm text-blue-500 underline cursor-pointer">Reset Game</a>
+             </div>
         </div>
 
         <h3 class="text-xl font-semibold mb-2">On Court <span> - {{ onCourtPlayers.length }}</span></h3>
-        <transition-group name="fade" tag="ul" class="mb-4 space-y-2">
-            <li v-for="player in onCourtPlayers" :key="player.id" class="p-4 rounded-md relative overflow-hidden">
+        <transition-group name="fade" tag="ul" class="mb-4 space-y-1">
+            <li v-for="player in onCourtPlayers" :key="player.id" class="py-1 px-3 rounded-md relative overflow-hidden">
                 <div class="absolute inset-0 bg-gray-100">
                     <div class="h-full bg-green-200" :style="{ width: `${(player.timePlayedThisPeriod / (periodDuration * 60)) * 100}%` }"></div>
                 </div>
@@ -72,7 +76,7 @@
                 </div>
                 <div class="flex items-center justify-between relative z-10">
                     <span><b>{{ player.name }}</b> - played: {{ formatTime(player.timePlayed) }}</span>
-                    <button @click="substituteOut(player)" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded-md">Sub Out</button>
+                    <button @click="substituteOut(player)" class="bg-blue-500 hover:bg-blue-600 text-white text-xs  py-2 px-3 font-bold rounded-md">Sub Out</button>
                 </div>
             </li>
         </transition-group>
@@ -88,7 +92,7 @@
                 </div>
                 <div class="flex items-center justify-between relative z-10">
                     <span><b>{{ player.name }}</b> - played: {{ formatTime(player.timePlayed) }}</span>
-                    <button @click="substituteIn(player)" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded-md">Sub In</button>
+                    <button @click="substituteIn(player)" class="bg-blue-500 hover:bg-blue-600 text-white text-xs  py-2 px-3 font-bold py-1 px-3 rounded-md">Sub In</button>
                 </div>
             </li>
         </transition-group>
@@ -154,6 +158,7 @@
             const benchPlayers = computed(() => presentPlayers.value.filter(p => !p.onCourt))
 
             const startGame = () => {
+                console.log('game started',timerRunning.value, "gameTime.value ", gameTime.value )
                 gameStarted.value = true
                 gameTime.value = periodDuration.value * 60 // Set initial time to period duration in seconds
                 timerRunning.value = false // Start with the timer stopped
