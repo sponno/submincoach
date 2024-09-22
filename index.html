@@ -11,7 +11,7 @@
 <body class="bg-gray-100 p-0">
 <div id="app" class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-lg">
     <h1 class="text-xl font-bold mb-2 text-gray-800" v-if="showManagePlayers">SUB ME IN COACH</h1>
-    <h1 class="text-sm font-bold mb-1 text-gray-800" v-else>SUB ME IN COACH</h1>
+    
 
     <div v-if="showManagePlayers">
         <h2 class="text-2xl font-semibold mb-2">My Players</h2>
@@ -54,8 +54,8 @@
         <div class="game-controls mb-4  items-center gap-x-4">
            <div class="flex space-x-10">
             <h2 class="text-lg   font-semibold">
-                <a class="border-b border-light-blue-300" @click='nextPeriod'>Period {{ currentPeriod }} of {{ numberOfPeriods }}</a> - 
-                 <span @click="toggleTimeDisplay" class="">{{ displayTime }}</span>
+                <a class="border-b border-light-blue-300" @click='nextPeriod'>period {{ currentPeriod }} of {{ numberOfPeriods }}</a> - 
+                 <span @click="toggleTimeDisplay" class="">time {{ displayTime }}</span>
             </h2>
             <button @click="toggleTimer" class="text-xs bg-green-500 w-[80px] hover:bg-green-600 text-white py-1 px-1 rounded-md">
                 {{ timerRunning ? 'Pause' : 'Start' }}
